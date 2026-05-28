@@ -1,0 +1,1590 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexus — Chat</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<style>
+  :root {
+    --bg-deepest: #0d0f13;
+    --bg-deep: #13151b;
+    --bg-mid: #1a1d26;
+    --bg-surface: #20232e;
+    --bg-hover: #272b38;
+    --bg-active: #2e3344;
+    --accent: #5b73ff;
+    --accent-hover: #7088ff;
+    --accent-glow: rgba(91, 115, 255, 0.25);
+    --accent2: #ff5b8d;
+    --text-primary: #e8eaf0;
+    --text-secondary: #8b90a7;
+    --text-muted: #555b73;
+    --border: rgba(255,255,255,0.06);
+    --border-strong: rgba(255,255,255,0.12);
+    --success: #4ade80;
+    --danger: #f87171;
+    --online: #4ade80;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --radius-xs: 6px;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg-deepest);
+    color: var(--text-primary);
+    height: 100vh;
+    overflow: hidden;
+    font-size: 14px;
+  }
+
+  /* ─── AUTH SCREENS ──────────────────────────────────── */
+  #auth-overlay {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg-deepest);
+    z-index: 1000;
+    animation: fadeIn 0.4s ease;
+  }
+
+  .auth-bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 20%, rgba(91,115,255,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 80%, rgba(255,91,141,0.08) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .auth-card {
+    position: relative;
+    background: var(--bg-deep);
+    border: 1px solid var(--border-strong);
+    border-radius: 20px;
+    padding: 40px 44px;
+    width: 420px;
+    max-width: 95vw;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(91,115,255,0.08);
+    animation: slideUp 0.5s cubic-bezier(0.16,1,0.3,1);
+  }
+
+  .auth-logo {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 32px;
+  }
+
+  .auth-logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    box-shadow: 0 4px 16px var(--accent-glow);
+  }
+
+  .auth-logo-text {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+  }
+
+  .auth-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+
+  .auth-subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 28px;
+  }
+
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+
+  .form-input {
+    width: 100%;
+    background: var(--bg-mid);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 11px 14px;
+    color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .form-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  .form-input::placeholder { color: var(--text-muted); }
+
+  .form-input.error {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 3px rgba(248,113,113,0.15);
+  }
+
+  .form-error {
+    font-size: 12px;
+    color: var(--danger);
+    margin-top: 5px;
+    display: none;
+  }
+
+  .form-error.show { display: block; }
+
+  .btn-primary {
+    width: 100%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 12px 20px;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+    margin-top: 8px;
+    box-shadow: 0 4px 20px var(--accent-glow);
+  }
+
+  .btn-primary:hover {
+    background: var(--accent-hover);
+    box-shadow: 0 6px 28px rgba(91,115,255,0.4);
+  }
+
+  .btn-primary:active { transform: scale(0.98); }
+
+  .auth-switch {
+    text-align: center;
+    margin-top: 22px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .auth-link {
+    color: var(--accent);
+    cursor: pointer;
+    font-weight: 500;
+    transition: color 0.2s;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .auth-link:hover { color: var(--accent-hover); }
+
+  .global-error {
+    background: rgba(248,113,113,0.1);
+    border: 1px solid rgba(248,113,113,0.3);
+    border-radius: var(--radius-xs);
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--danger);
+    margin-bottom: 16px;
+    display: none;
+  }
+
+  .global-error.show { display: block; }
+
+  .global-success {
+    background: rgba(74,222,128,0.1);
+    border: 1px solid rgba(74,222,128,0.3);
+    border-radius: var(--radius-xs);
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--success);
+    margin-bottom: 16px;
+    display: none;
+  }
+
+  .global-success.show { display: block; }
+
+  /* ─── MAIN APP ──────────────────────────────────────── */
+  #app {
+    display: none;
+    height: 100vh;
+    flex-direction: row;
+  }
+
+  #app.visible { display: flex; animation: fadeIn 0.4s ease; }
+
+  /* Server sidebar */
+  .server-sidebar {
+    width: 68px;
+    background: var(--bg-deepest);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 0;
+    gap: 8px;
+    overflow-y: auto;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border);
+  }
+
+  .server-icon {
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    background: var(--bg-surface);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: border-radius 0.2s, background 0.2s;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    position: relative;
+    flex-shrink: 0;
+    border: 2px solid transparent;
+  }
+
+  .server-icon:hover {
+    border-radius: 16px;
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .server-icon.active {
+    border-radius: 16px;
+    background: var(--accent);
+    color: #fff;
+    border-color: rgba(91,115,255,0.4);
+  }
+
+  .server-icon.home {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    border-radius: 50%;
+    font-size: 22px;
+  }
+
+  .server-icon.home:hover, .server-icon.home.active {
+    border-radius: 16px;
+  }
+
+  .server-divider {
+    width: 32px; height: 2px;
+    background: var(--border-strong);
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .server-add {
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    background: var(--bg-surface);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    color: var(--success);
+    font-size: 24px;
+    font-weight: 300;
+    transition: border-radius 0.2s, background 0.2s;
+    flex-shrink: 0;
+  }
+
+  .server-add:hover {
+    border-radius: 16px;
+    background: var(--success);
+    color: #fff;
+  }
+
+  /* Channel sidebar */
+  .channel-sidebar {
+    width: 240px;
+    background: var(--bg-deep);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border);
+  }
+
+  .sidebar-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .sidebar-header-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .sidebar-search {
+    margin: 10px 12px;
+    background: var(--bg-mid);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    padding: 7px 12px;
+    display: flex; align-items: center; gap: 8px;
+    cursor: text;
+    transition: border-color 0.2s;
+  }
+
+  .sidebar-search:focus-within { border-color: var(--accent); }
+
+  .sidebar-search input {
+    background: none; border: none; outline: none;
+    color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    width: 100%;
+  }
+
+  .sidebar-search input::placeholder { color: var(--text-muted); }
+
+  .sidebar-section-label {
+    padding: 14px 12px 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  .sidebar-section-label button {
+    background: none; border: none;
+    color: var(--text-muted); cursor: pointer;
+    font-size: 18px; line-height: 1;
+    transition: color 0.2s;
+  }
+
+  .sidebar-section-label button:hover { color: var(--text-primary); }
+
+  .friends-list-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 8px;
+  }
+
+  .empty-state-sidebar {
+    padding: 24px 12px;
+    text-align: center;
+  }
+
+  .empty-state-sidebar p {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  /* User area */
+  .user-area {
+    padding: 10px 12px;
+    background: var(--bg-mid);
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+    margin-top: auto;
+  }
+
+  .user-avatar {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .user-status-dot {
+    position: absolute; bottom: 0; right: 0;
+    width: 11px; height: 11px;
+    background: var(--online);
+    border-radius: 50%;
+    border: 2px solid var(--bg-mid);
+  }
+
+  .user-info { flex: 1; min-width: 0; }
+
+  .user-display-name {
+    font-size: 13px; font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .user-username {
+    font-size: 11px; color: var(--text-muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .user-actions {
+    display: flex; gap: 4px;
+  }
+
+  .icon-btn {
+    background: none; border: none;
+    color: var(--text-muted); cursor: pointer;
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .icon-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+  /* Main content */
+  .main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-mid);
+    overflow: hidden;
+  }
+
+  .main-header {
+    height: 52px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 20px;
+    gap: 12px;
+    background: var(--bg-mid);
+    flex-shrink: 0;
+  }
+
+  .main-header-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .main-header-badge {
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+  }
+
+  .main-header-tabs {
+    display: flex; gap: 2px; margin-left: 8px;
+  }
+
+  .tab-btn {
+    background: none; border: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .tab-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+  .tab-btn.active {
+    background: var(--bg-active);
+    color: var(--text-primary);
+  }
+
+  .main-body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 20px;
+    padding: 40px;
+  }
+
+  .empty-icon {
+    font-size: 72px;
+    opacity: 0.15;
+    animation: float 4s ease-in-out infinite;
+  }
+
+  .empty-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    opacity: 0.6;
+  }
+
+  .empty-desc {
+    font-size: 14px;
+    color: var(--text-muted);
+    text-align: center;
+    max-width: 340px;
+    line-height: 1.6;
+  }
+
+  .btn-secondary {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: 10px 20px;
+    color: var(--text-primary);
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    margin-top: 4px;
+  }
+
+  .btn-secondary:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Right panel */
+  .right-panel {
+    width: 280px;
+    background: var(--bg-deep);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+
+  .right-panel-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  .right-panel-body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .right-panel-empty {
+    font-size: 13px;
+    color: var(--text-muted);
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  /* Tooltip */
+  .tooltip {
+    position: absolute;
+    left: calc(100% + 12px);
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 999;
+  }
+
+  .server-icon:hover .tooltip { opacity: 1; }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--bg-hover); border-radius: 4px; }
+
+  /* Notification badge */
+  .notif-badge {
+    position: absolute;
+    bottom: -2px; right: -2px;
+    background: var(--danger);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 8px;
+    border: 2px solid var(--bg-deepest);
+  }
+
+  /* ─── ANIMATIONS ─────────────────────────────────────── */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  /* Modal overlay for logout confirm */
+  .modal {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 2000;
+    display: none;
+    animation: fadeIn 0.2s ease;
+  }
+
+  .modal.open { display: flex; }
+
+  .modal-card {
+    background: var(--bg-deep);
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    padding: 28px 32px;
+    width: 360px;
+    animation: slideUp 0.3s cubic-bezier(0.16,1,0.3,1);
+  }
+
+  .modal-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+
+  .modal-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
+
+  .modal-actions {
+    display: flex; gap: 10px; justify-content: flex-end;
+  }
+
+  .btn-ghost {
+    background: none;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-xs);
+    padding: 8px 18px;
+    color: var(--text-secondary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .btn-ghost:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+  .btn-danger {
+    background: var(--danger);
+    border: none;
+    border-radius: var(--radius-xs);
+    padding: 8px 18px;
+    color: #fff;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .btn-danger:hover { background: #ef4444; }
+
+  /* ─── OTP INPUT ─────────────────────────────────────── */
+  .otp-container {
+    display: flex; gap: 8px; justify-content: center;
+    margin: 10px 0 4px;
+  }
+
+  .otp-input {
+    width: 48px; height: 56px;
+    background: var(--bg-mid);
+    border: 2px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    text-align: center;
+    font-family: 'Syne', sans-serif;
+    font-size: 22px; font-weight: 700;
+    color: var(--text-primary);
+    outline: none;
+    caret-color: transparent;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  }
+
+  .otp-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+    background: var(--bg-surface);
+  }
+
+  .otp-input.filled {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(91,115,255,0.06);
+  }
+
+  .otp-input.otp-error { border-color: var(--danger); color: var(--danger); }
+
+  /* ─── VERIFY INFO BOX ────────────────────────────────── */
+  .verify-info-box {
+    background: rgba(91,115,255,0.07);
+    border: 1px solid rgba(91,115,255,0.18);
+    border-radius: var(--radius-xs);
+    padding: 11px 14px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 18px;
+    line-height: 1.5;
+  }
+  .verify-info-box strong { color: var(--text-primary); }
+
+  /* ─── DEMO CODE BOX ─────────────────────────────────── */
+  .demo-code-box {
+    background: rgba(255, 196, 0, 0.07);
+    border: 1px solid rgba(255, 196, 0, 0.25);
+    border-radius: var(--radius-xs);
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #ffc400;
+    margin-bottom: 14px;
+    text-align: center;
+    display: none;
+    line-height: 1.5;
+  }
+  .demo-code-box.show { display: block; }
+  .demo-code-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px; font-weight: 800;
+    letter-spacing: 6px;
+    display: block;
+    margin-top: 4px;
+    color: #ffce00;
+  }
+
+  /* ─── TIMER ─────────────────────────────────────────── */
+  .code-timer {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 10px;
+    transition: color 0.3s;
+  }
+  .code-timer.expiring { color: var(--danger); }
+
+  /* ─── RESEND ROW ─────────────────────────────────────── */
+  .resend-row {
+    text-align: center;
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  /* ─── BUTTON STATES ─────────────────────────────────── */
+  .btn-primary:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  /* ─── FORGOT PASSWORD LINK ──────────────────────────── */
+  .forgot-row {
+    text-align: right;
+    margin-top: 4px;
+    margin-bottom: 6px;
+  }
+  .forgot-link {
+    font-size: 12px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+  .forgot-link:hover { color: var(--accent); }
+
+  /* ─── ADD FRIEND MODAL ──────────────────────────────── */
+  /* Add friend modal */
+  .add-friend-section {
+    padding: 0 16px 12px;
+  }
+
+  .add-friend-btn {
+    width: 100%;
+    background: var(--bg-surface);
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-xs);
+    padding: 10px;
+    color: var(--text-muted);
+    font-size: 12px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .add-friend-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-glow);
+  }
+</style>
+</head>
+<body>
+
+<!-- ─── AUTH OVERLAY ─────────────────────────────────── -->
+<div id="auth-overlay">
+  <div class="auth-bg"></div>
+
+  <!-- LOGIN -->
+  <div class="auth-card" id="login-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">⚡</div>
+      <span class="auth-logo-text">Nexus</span>
+    </div>
+    <h1 class="auth-title">Bon retour !</h1>
+    <p class="auth-subtitle">Content de te revoir. Connecte-toi à ton compte.</p>
+
+    <div class="global-error" id="login-error"></div>
+    <div class="global-success" id="login-success"></div>
+
+    <div class="form-group">
+      <label class="form-label">Email ou nom d'utilisateur</label>
+      <input type="text" class="form-input" id="login-identifier" placeholder="exemple@mail.com ou @pseudo">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Mot de passe</label>
+      <input type="password" class="form-input" id="login-password" placeholder="••••••••">
+      <div class="forgot-row">
+        <span class="forgot-link" onclick="showForgotEmail()">Mot de passe oublié ?</span>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="handleLogin()">Se connecter</button>
+
+    <div class="auth-switch">
+      Pas encore de compte ? <span class="auth-link" onclick="showRegister()">Créer un compte</span>
+    </div>
+  </div>
+
+  <!-- REGISTER -->
+  <div class="auth-card" id="register-card" style="display:none">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">⚡</div>
+      <span class="auth-logo-text">Nexus</span>
+    </div>
+    <h1 class="auth-title">Créer un compte</h1>
+    <p class="auth-subtitle">Rejoins Nexus et connecte-toi avec tes amis.</p>
+
+    <div class="global-error" id="register-error"></div>
+    <div class="global-success" id="register-success"></div>
+
+    <div class="form-group">
+      <label class="form-label">Nom d'utilisateur</label>
+      <input type="text" class="form-input" id="reg-username" placeholder="pseudo_cool (sans espaces)">
+      <div class="form-error" id="err-username"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Nom d'affichage</label>
+      <input type="text" class="form-input" id="reg-displayname" placeholder="Ton Prénom ou surnom">
+      <div class="form-error" id="err-displayname"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input type="email" class="form-input" id="reg-email" placeholder="ton@email.com">
+      <div class="form-error" id="err-email"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Mot de passe</label>
+      <input type="password" class="form-input" id="reg-password" placeholder="Au moins 6 caractères">
+      <div class="form-error" id="err-password"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Confirmer le mot de passe</label>
+      <input type="password" class="form-input" id="reg-confirm" placeholder="Répète ton mot de passe">
+      <div class="form-error" id="err-confirm"></div>
+    </div>
+    <button class="btn-primary" id="register-btn" onclick="handleRegister()">Créer le compte</button>
+
+    <div class="auth-switch">
+      Déjà un compte ? <span class="auth-link" onclick="showLogin()">Se connecter</span>
+    </div>
+  </div>
+
+  <!-- VERIFY EMAIL -->
+  <div class="auth-card" id="verify-email-card" style="display:none">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">⚡</div>
+      <span class="auth-logo-text">Nexus</span>
+    </div>
+    <h1 class="auth-title">Vérifie ton email</h1>
+    <p class="auth-subtitle">Un code à 6 chiffres a été envoyé à ton adresse.</p>
+
+    <div class="verify-info-box">
+      📧 Code envoyé à <strong id="verify-email-display">–</strong>
+    </div>
+
+    <div class="demo-code-box" id="verify-demo-box">
+      ⚠️ Mode démo (EmailJS non configuré) — ton code :
+      <span class="demo-code-value" id="verify-demo-code">–</span>
+    </div>
+
+    <div class="global-error" id="verify-error"></div>
+
+    <div class="otp-container" id="verify-otp-container">
+      <input type="text" class="otp-input" maxlength="1" inputmode="numeric" autocomplete="one-time-code">
+      <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
+      <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
+      <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
+      <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
+      <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
+    </div>
+
+    <div class="code-timer" id="verify-timer">Code valide pendant 10:00</div>
+
+    <button class="btn-primary" id="verify-btn" onclick="handleVerifyEmail()" style="margin-top:18px">
+      Vérifier le code
+    </button>
+
+    <div class="resend-row">
+      Pas reçu ?
+      <span class="auth-link" id="verify-resend-link" onclick="handleResendVerify()">Renvoyer le code</span>
+      <span id="verify-resend-timer" style="display:none;color:var(--text-muted)"></span>
+    </div>
+
+    <div class="auth-switch">
+      <span class="auth-link" onclick="showRegister()">← Retour à l'inscription</span>
+    </div>
+  </div>
+
+  <!-- FORGOT: ENTER EMAIL -->
+  <div class="auth-card" id="forgot-email-card" style="display:none">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">⚡</div>
+      <span class="auth-logo-text">Nexus</span>
+    </div>
+    <h1 class="auth-title">Mot de passe oublié</h1>
+    <p class="auth-subtitle">Saisis ton email pour recevoir un code de réinitialisation.</p>
+
+    <div class="global-error" id="forgot-email-error"></div>
+
+    <div class="form-group">
+      <label class="form-label">Adresse email</label>
+      <input type="email" class="form-input" id="forgot-email-input" placeholder="ton@email.com">
+    </div>
+
+    <button class="btn-primary" id="forgot-send-btn" onclick="handleForgotSend()">Envoyer le code</button>
+
+    <div class="auth-switch">
+      <span class="auth-link" onclick="showLogin()">← Retour à la connexion</span>
+    </div>
+  </div>
+
+  <!-- FORGOT: VERIFY CODE -->
+  <div class="auth-card" id="forgot-verify-card" style="display:none">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">⚡</div>
+      <span class="auth-logo-text">Nexus</span>
+    </div>
+    <h1 class="auth-title">Saisir le code</h1>
+    <p class="auth-subtitle">Entre le code à 6 chiffres reçu par email.</p>
+
+    <div class="verify-info-box">
+      📧 Code envoyé à <strong id="forgot-email-display">–</strong>
+    </div>
+
+    <div class="demo-code-box" id="forgot-demo-box">
+      ⚠️ Mode démo (EmailJS non configuré) — ton code :
+      <span class="demo-code-value" id="forgot-demo-code">–</span>
+    </div>
+
+    <div class="global-error" id="forgot-verify-error"></div>
+
+    <div class="otp-container" id="forgot-otp-container">
+      <input type="text" class="otp-input" maxlength="1" inputmode="numeric" autocomplete="one-time-code">
+      <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
+      <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
+      <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
+      <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
+      <input type="text" class="otp-input" maxlength="1" inputmode="numeric">
+    </div>
+
+    <div class="code-timer" id="forgot-timer">Code valide pendant 10:00</div>
+
+    <button class="btn-primary" id="forgot-verify-btn" onclick="handleForgotVerify()" style="margin-top:18px">
+      Vérifier le code
+    </button>
+
+    <div class="resend-row">
+      Pas reçu ?
+      <span class="auth-link" id="forgot-resend-link" onclick="handleForgotResend()">Renvoyer le code</span>
+      <span id="forgot-resend-timer" style="display:none;color:var(--text-muted)"></span>
+    </div>
+
+    <div class="auth-switch">
+      <span class="auth-link" onclick="showForgotEmail()">← Retour</span>
+    </div>
+  </div>
+
+  <!-- FORGOT: NEW PASSWORD -->
+  <div class="auth-card" id="forgot-reset-card" style="display:none">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">⚡</div>
+      <span class="auth-logo-text">Nexus</span>
+    </div>
+    <h1 class="auth-title">Nouveau mot de passe</h1>
+    <p class="auth-subtitle">Choisis un nouveau mot de passe sécurisé.</p>
+
+    <div class="global-error" id="forgot-reset-error"></div>
+    <div class="global-success" id="forgot-reset-success"></div>
+
+    <div class="form-group">
+      <label class="form-label">Nouveau mot de passe</label>
+      <input type="password" class="form-input" id="forgot-newpw" placeholder="Au moins 6 caractères">
+      <div class="form-error" id="err-newpw"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Confirmer le mot de passe</label>
+      <input type="password" class="form-input" id="forgot-confirmpw" placeholder="Répète ton nouveau mot de passe">
+      <div class="form-error" id="err-confirmpw"></div>
+    </div>
+
+    <button class="btn-primary" onclick="handleResetPassword()">Modifier le mot de passe</button>
+
+    <div class="auth-switch">
+      <span class="auth-link" onclick="showLogin()">← Retour à la connexion</span>
+    </div>
+  </div>
+
+<!-- ─── MAIN APP ─────────────────────────────────────── -->
+<div id="app">
+  <!-- Server sidebar -->
+  <div class="server-sidebar">
+    <div class="server-icon home active" title="Accueil" onclick="setActiveServer(this)">
+      ⚡
+      <span class="tooltip">Accueil</span>
+    </div>
+    <div class="server-divider"></div>
+    <div class="server-add" title="Ajouter un serveur" onclick="showModal('no-server-modal')">
+      +
+      <span class="tooltip">Ajouter un serveur</span>
+    </div>
+  </div>
+
+  <!-- Channel / Friends sidebar -->
+  <div class="channel-sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-header-title">Messages privés</span>
+    </div>
+
+    <div class="sidebar-search">
+      <span style="color:var(--text-muted);font-size:14px">🔍</span>
+      <input type="text" placeholder="Rechercher ou démarrer...">
+    </div>
+
+    <div class="sidebar-section-label">
+      Amis directs
+      <button onclick="showModal('add-friend-modal')" title="Ajouter un ami">+</button>
+    </div>
+
+    <div class="friends-list-area">
+      <div class="empty-state-sidebar">
+        <p>Aucun ami pour l'instant.<br>Commence par en ajouter un !</p>
+      </div>
+    </div>
+
+    <!-- User area -->
+    <div class="user-area">
+      <div class="user-avatar" id="app-avatar">
+        A
+        <div class="user-status-dot"></div>
+      </div>
+      <div class="user-info">
+        <div class="user-display-name" id="app-display-name">Utilisateur</div>
+        <div class="user-username" id="app-username">@pseudo</div>
+      </div>
+      <div class="user-actions">
+        <button class="icon-btn" title="Paramètres" onclick="showModal('settings-modal')">⚙</button>
+        <button class="icon-btn" title="Se déconnecter" onclick="showModal('logout-modal')">🚪</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div class="main-content">
+    <div class="main-header">
+      <span style="color:var(--text-muted);font-size:18px">👥</span>
+      <span class="main-header-title">Amis</span>
+      <div class="main-header-tabs">
+        <button class="tab-btn active">En ligne</button>
+        <button class="tab-btn" onclick="switchTab(this)">Tous</button>
+        <button class="tab-btn" onclick="switchTab(this)">En attente</button>
+        <button class="tab-btn" onclick="switchTab(this)">Bloqués</button>
+      </div>
+      <div style="margin-left:auto; display:flex; gap:8px; align-items:center">
+        <button class="btn-secondary" onclick="showModal('add-friend-modal')" style="padding:7px 16px; font-size:12px; margin:0">
+          + Ajouter un ami
+        </button>
+      </div>
+    </div>
+
+    <div class="main-body">
+      <div class="empty-icon">👻</div>
+      <div class="empty-title">Aucun ami... pour l'instant !</div>
+      <div class="empty-desc">Wubba lubba dub dub ! Tu n'as encore aucun ami. Clique sur "Ajouter un ami" pour démarrer.</div>
+      <button class="btn-secondary" onclick="showModal('add-friend-modal')">Ajouter un ami</button>
+    </div>
+  </div>
+
+  <!-- Right panel - activity -->
+  <div class="right-panel">
+    <div class="right-panel-header">Activité</div>
+    <div class="right-panel-body">
+      <span style="font-size:36px;opacity:0.15">🎮</span>
+      <p class="right-panel-empty">Aucune activité à afficher.<br>Tes amis apparaîtront ici.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MODALS ────────────────────────────────────────── -->
+
+<!-- Logout confirm -->
+<div class="modal" id="logout-modal">
+  <div class="modal-card">
+    <div class="modal-title">Se déconnecter ?</div>
+    <div class="modal-desc">Tu vas quitter ton compte <strong id="logout-name"></strong>. Tu pourras te reconnecter à tout moment.</div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('logout-modal')">Annuler</button>
+      <button class="btn-danger" onclick="handleLogout()">Se déconnecter</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add friend -->
+<div class="modal" id="add-friend-modal">
+  <div class="modal-card">
+    <div class="modal-title">Ajouter un ami</div>
+    <div class="modal-desc">Cette fonctionnalité sera bientôt disponible. Tu pourras rechercher des amis par leur nom d'utilisateur !</div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('add-friend-modal')">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- No server -->
+<div class="modal" id="no-server-modal">
+  <div class="modal-card">
+    <div class="modal-title">Créer un serveur</div>
+    <div class="modal-desc">La création de serveurs sera bientôt disponible. Reste connecté, de nouvelles fonctionnalités arrivent !</div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('no-server-modal')">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings -->
+<div class="modal" id="settings-modal">
+  <div class="modal-card">
+    <div class="modal-title">⚙ Paramètres</div>
+    <div class="modal-desc">Les paramètres du compte seront disponibles prochainement.</div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('settings-modal')">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ─── SUPABASE CONFIG ──────────────────────────────────
+  const SUPABASE_URL      = 'https://ifmnbgfqypuawqgedjgw.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlmbW5iZ2ZxeXB1YXdxZ2Vkamd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5OTQ4ODUsImV4cCI6MjA5NTU3MDg4NX0.F7Un_jEauULW6wPusURqrOrUKsvRh_Ss7VpiH6ehwrY';
+  const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // ─── EMAILJS CONFIG ───────────────────────────────────
+  const EMAILJS_PUBLIC_KEY  = 'ZoGhfO8ZjHcpBzpj8';
+  const EMAILJS_SERVICE_ID  = 'service_rbkn64b';
+  const EMAILJS_VERIFY_TMPL = 'template_ehvlaqm';
+  const EMAILJS_RESET_TMPL  = 'template_wivfhq2';
+  const EMAILJS_CONFIGURED  = true;
+  emailjs.init(EMAILJS_PUBLIC_KEY);
+
+  // ─── SESSION ─────────────────────────────────────────
+  function getCurrentUser() {
+    try { return JSON.parse(sessionStorage.getItem('nexus_current') || 'null'); } catch { return null; }
+  }
+  function setCurrentUser(user) { sessionStorage.setItem('nexus_current', JSON.stringify(user)); }
+
+  // ─── PENDING DATA ─────────────────────────────────────
+  let pendingRegistration = null;
+  let pendingReset        = null;
+
+  // ─── CARD NAVIGATION ─────────────────────────────────
+  const ALL_CARDS = ['login-card','register-card','verify-email-card','forgot-email-card','forgot-verify-card','forgot-reset-card'];
+
+  function showAllCards(activeId) {
+    ALL_CARDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (id === activeId) {
+        el.style.display = 'block';
+        el.style.animation = 'none'; void el.offsetHeight; el.style.animation = '';
+      } else { el.style.display = 'none'; }
+    });
+  }
+
+  function showLogin()       { showAllCards('login-card'); hideEl('login-error'); }
+  function showRegister()    { showAllCards('register-card'); clearRegisterErrors(); }
+  function showForgotEmail() { hideEl('forgot-email-error'); document.getElementById('forgot-email-input').value=''; showAllCards('forgot-email-card'); }
+
+  // ─── HELPERS ─────────────────────────────────────────
+  function generateCode() { return Math.floor(100000 + Math.random() * 900000).toString(); }
+
+  async function sendEmailCode(templateId, params) {
+    return emailjs.send(EMAILJS_SERVICE_ID, templateId, params);
+  }
+
+  function setButtonLoading(btn, loading) {
+    if (!btn) return;
+    if (loading) { btn.disabled=true; btn.dataset.orig=btn.textContent; btn.textContent='⏳ Chargement…'; }
+    else { btn.disabled=false; btn.textContent=btn.dataset.orig||btn.textContent; }
+  }
+
+  function showError(id, msg) { const el=document.getElementById(id); if(!el) return; el.textContent=msg; el.classList.add('show'); }
+  function hideEl(id) { const el=document.getElementById(id); if(el) el.classList.remove('show'); }
+
+  // ─── OTP ─────────────────────────────────────────────
+  function initOTPInputs(containerId) {
+    const inputs = Array.from(document.querySelectorAll('#'+containerId+' .otp-input'));
+    inputs.forEach((input, idx) => {
+      input.addEventListener('input', e => {
+        const val = e.target.value.replace(/\D/g,''); e.target.value=val.slice(-1);
+        input.classList.toggle('filled', !!e.target.value);
+        if (e.target.value && idx < inputs.length-1) inputs[idx+1].focus();
+      });
+      input.addEventListener('keydown', e => {
+        if (e.key==='Backspace' && !e.target.value && idx>0) {
+          inputs[idx-1].value=''; inputs[idx-1].classList.remove('filled'); inputs[idx-1].focus();
+        }
+      });
+      input.addEventListener('paste', e => {
+        e.preventDefault();
+        const pasted = e.clipboardData.getData('text').replace(/\D/g,'');
+        inputs.forEach((inp,i) => { inp.value=pasted[i]||''; inp.classList.toggle('filled',!!inp.value); });
+        inputs[Math.min(pasted.length, inputs.length-1)].focus();
+      });
+    });
+  }
+
+  function getOTPValue(containerId) {
+    return Array.from(document.querySelectorAll('#'+containerId+' .otp-input')).map(i=>i.value).join('');
+  }
+  function clearOTP(containerId) {
+    document.querySelectorAll('#'+containerId+' .otp-input').forEach(i=>{ i.value=''; i.classList.remove('filled','otp-error'); });
+  }
+  function focusFirstOTP(containerId) {
+    setTimeout(()=>{ const f=document.querySelector('#'+containerId+' .otp-input'); if(f) f.focus(); },80);
+  }
+
+  // ─── TIMER ───────────────────────────────────────────
+  const _timers = {};
+  function startCountdown(timerId, durationMs) {
+    clearInterval(_timers[timerId]);
+    const end = Date.now()+durationMs;
+    const el = document.getElementById(timerId);
+    function tick() {
+      const rem=Math.max(0,end-Date.now()), m=Math.floor(rem/60000), s=Math.floor((rem%60000)/1000);
+      if (el) {
+        el.textContent=`Code valide pendant ${m}:${s.toString().padStart(2,'0')}`;
+        el.classList.toggle('expiring', rem<90000&&rem>0);
+        if (rem===0) { el.textContent='⚠️ Code expiré — renvoie un nouveau code.'; clearInterval(_timers[timerId]); }
+      }
+    }
+    tick(); _timers[timerId]=setInterval(tick,1000);
+  }
+
+  function startResendCooldown(linkId, timerId, seconds) {
+    const link=document.getElementById(linkId), timerEl=document.getElementById(timerId);
+    if (!link||!timerEl) return;
+    link.style.pointerEvents='none'; link.style.opacity='0.45';
+    timerEl.style.display='inline'; let rem=seconds; timerEl.textContent=` (${rem}s)`;
+    const iv=setInterval(()=>{
+      rem--; timerEl.textContent=` (${rem}s)`;
+      if(rem<=0){clearInterval(iv);link.style.pointerEvents='';link.style.opacity='';timerEl.style.display='none';}
+    },1000);
+  }
+
+  // ─── REGISTER ERRORS ─────────────────────────────────
+  function clearRegisterErrors() {
+    ['username','displayname','email','password','confirm'].forEach(f=>{
+      const el=document.getElementById('err-'+f), inp=document.getElementById('reg-'+f);
+      if(el) el.classList.remove('show'); if(inp) inp.classList.remove('error');
+    });
+    hideEl('register-error'); hideEl('register-success');
+  }
+  function fieldError(field, msg) {
+    const inp=document.getElementById('reg-'+field), err=document.getElementById('err-'+field);
+    if(inp) inp.classList.add('error'); if(err){err.textContent=msg;err.classList.add('show');}
+  }
+
+  // ─── REGISTER ────────────────────────────────────────
+  async function handleRegister() {
+    clearRegisterErrors();
+    const username    = document.getElementById('reg-username').value.trim();
+    const displayname = document.getElementById('reg-displayname').value.trim();
+    const email       = document.getElementById('reg-email').value.trim();
+    const password    = document.getElementById('reg-password').value;
+    const confirm     = document.getElementById('reg-confirm').value;
+
+    let valid=true;
+    if (!username) { fieldError('username',"Le nom d'utilisateur est requis."); valid=false; }
+    else if (!/^[a-zA-Z0-9_.-]{3,30}$/.test(username)) { fieldError('username','Lettres, chiffres, _ . - (3-30 car.)'); valid=false; }
+    if (!displayname) { fieldError('displayname',"Le nom d'affichage est requis."); valid=false; }
+    else if (displayname.length<2||displayname.length>40) { fieldError('displayname','Entre 2 et 40 caractères.'); valid=false; }
+    if (!email) { fieldError('email',"L'email est requis."); valid=false; }
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { fieldError('email',"Format d'email invalide."); valid=false; }
+    if (!password) { fieldError('password','Le mot de passe est requis.'); valid=false; }
+    else if (password.length<6) { fieldError('password','Au moins 6 caractères.'); valid=false; }
+    if (!confirm) { fieldError('confirm','Confirme ton mot de passe.'); valid=false; }
+    else if (password!==confirm) { fieldError('confirm','Les mots de passe ne correspondent pas.'); valid=false; }
+    if (!valid) return;
+
+    const btn=document.getElementById('register-btn');
+    setButtonLoading(btn,true);
+
+    const {data:existUser} = await db.from('users').select('id').eq('username_lower',username.toLowerCase()).maybeSingle();
+    if (existUser) { setButtonLoading(btn,false); showError('register-error',"Ce nom d'utilisateur est déjà pris."); return; }
+    const {data:existEmail} = await db.from('users').select('id').eq('email_lower',email.toLowerCase()).maybeSingle();
+    if (existEmail) { setButtonLoading(btn,false); showError('register-error','Un compte avec cet email existe déjà.'); return; }
+
+    const code=generateCode();
+    pendingRegistration={username,displayname,email,password,code,attempts:0,expiresAt:Date.now()+10*60*1000};
+
+    try {
+      await sendEmailCode(EMAILJS_VERIFY_TMPL,{to_email:email,username:displayname,code});
+    } catch(err) {
+      setButtonLoading(btn,false);
+      showError('register-error','Erreur EmailJS : '+(err?.text||err?.message||JSON.stringify(err))); return;
+    }
+
+    setButtonLoading(btn,false);
+    document.getElementById('verify-email-display').textContent=email;
+    document.getElementById('verify-demo-box').classList.remove('show');
+    clearOTP('verify-otp-container'); hideEl('verify-error');
+    showAllCards('verify-email-card');
+    startCountdown('verify-timer',10*60*1000);
+    focusFirstOTP('verify-otp-container');
+  }
+
+  // ─── VERIFY EMAIL ─────────────────────────────────────
+  async function handleVerifyEmail() {
+    const code=getOTPValue('verify-otp-container');
+    hideEl('verify-error');
+    if (code.length!==6) { showError('verify-error','Saisis les 6 chiffres du code.'); return; }
+    if (!pendingRegistration) { showError('verify-error',"Session expirée. Recommence l'inscription."); return; }
+    if (Date.now()>pendingRegistration.expiresAt) { showError('verify-error','Code expiré. Clique sur "Renvoyer le code".'); return; }
+    pendingRegistration.attempts++;
+    if (pendingRegistration.attempts>5) {
+      showError('verify-error',"Trop de tentatives. Recommence l'inscription.");
+      pendingRegistration=null; setTimeout(()=>showRegister(),2000); return;
+    }
+    if (code!==pendingRegistration.code) {
+      showError('verify-error',`Code incorrect. Il te reste ${6-pendingRegistration.attempts} tentative(s).`);
+      clearOTP('verify-otp-container'); focusFirstOTP('verify-otp-container'); return;
+    }
+
+    const btn=document.getElementById('verify-btn');
+    setButtonLoading(btn,true);
+    const {username,displayname,email,password}=pendingRegistration;
+    const {data:newUser,error}=await db.from('users').insert({
+      username, username_lower:username.toLowerCase(),
+      displayname, email, email_lower:email.toLowerCase(),
+      password, email_verified:true
+    }).select().single();
+    setButtonLoading(btn,false);
+    if (error) { showError('verify-error','Erreur Supabase : '+error.message); return; }
+    pendingRegistration=null; clearInterval(_timers['verify-timer']);
+    showAllCards('login-card');
+    document.getElementById('login-identifier').value=username;
+    hideEl('login-error');
+    showError('login-success','✓ Compte créé et email vérifié ! Tu peux maintenant te connecter.');
+  }
+
+  async function handleResendVerify() {
+    if (!pendingRegistration) return;
+    const code=generateCode(); pendingRegistration.code=code; pendingRegistration.attempts=0; pendingRegistration.expiresAt=Date.now()+10*60*1000;
+    startResendCooldown('verify-resend-link','verify-resend-timer',60);
+    try { await sendEmailCode(EMAILJS_VERIFY_TMPL,{to_email:pendingRegistration.email,username:pendingRegistration.displayname,code}); } catch(_){}
+    clearOTP('verify-otp-container'); startCountdown('verify-timer',10*60*1000); focusFirstOTP('verify-otp-container');
+  }
+
+  // ─── FORGOT PASSWORD ──────────────────────────────────
+  async function handleForgotSend() {
+    const email=document.getElementById('forgot-email-input').value.trim();
+    hideEl('forgot-email-error');
+    if (!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showError('forgot-email-error',"Saisis une adresse email valide."); return; }
+    const btn=document.getElementById('forgot-send-btn');
+    setButtonLoading(btn,true);
+    const {data:user}=await db.from('users').select('*').eq('email_lower',email.toLowerCase()).maybeSingle();
+    if (!user) { setButtonLoading(btn,false); showError('forgot-email-error','Aucun compte trouvé avec cet email.'); return; }
+    const code=generateCode();
+    pendingReset={email,userId:user.id,code,attempts:0,expiresAt:Date.now()+10*60*1000};
+    try {
+      await sendEmailCode(EMAILJS_RESET_TMPL,{to_email:email,code});
+    } catch(err) {
+      setButtonLoading(btn,false);
+      showError('forgot-email-error','Erreur EmailJS : '+(err?.text||err?.message||JSON.stringify(err))); return;
+    }
+    setButtonLoading(btn,false);
+    document.getElementById('forgot-email-display').textContent=email;
+    document.getElementById('forgot-demo-box').classList.remove('show');
+    clearOTP('forgot-otp-container'); hideEl('forgot-verify-error');
+    showAllCards('forgot-verify-card');
+    startCountdown('forgot-timer',10*60*1000); focusFirstOTP('forgot-otp-container');
+  }
+
+  function handleForgotVerify() {
+    const code=getOTPValue('forgot-otp-container');
+    hideEl('forgot-verify-error');
+    if (code.length!==6) { showError('forgot-verify-error','Saisis les 6 chiffres du code.'); return; }
+    if (!pendingReset||Date.now()>pendingReset.expiresAt) { showError('forgot-verify-error','Code expiré. Recommence.'); return; }
+    pendingReset.attempts++;
+    if (pendingReset.attempts>5) { showError('forgot-verify-error','Trop de tentatives. Recommence.'); pendingReset=null; setTimeout(()=>showForgotEmail(),2000); return; }
+    if (code!==pendingReset.code) {
+      showError('forgot-verify-error',`Code incorrect. Il te reste ${6-pendingReset.attempts} tentative(s).`);
+      clearOTP('forgot-otp-container'); focusFirstOTP('forgot-otp-container'); return;
+    }
+    clearInterval(_timers['forgot-timer']);
+    ['forgot-newpw','forgot-confirmpw'].forEach(id=>{ document.getElementById(id).value=''; document.getElementById(id).classList.remove('error'); });
+    ['forgot-reset-error','forgot-reset-success','err-newpw','err-confirmpw'].forEach(hideEl);
+    showAllCards('forgot-reset-card');
+    setTimeout(()=>document.getElementById('forgot-newpw').focus(),80);
+  }
+
+  async function handleForgotResend() {
+    if (!pendingReset) return;
+    const code=generateCode(); pendingReset.code=code; pendingReset.attempts=0; pendingReset.expiresAt=Date.now()+10*60*1000;
+    startResendCooldown('forgot-resend-link','forgot-resend-timer',60);
+    try { await sendEmailCode(EMAILJS_RESET_TMPL,{to_email:pendingReset.email,code}); } catch(_){}
+    clearOTP('forgot-otp-container'); startCountdown('forgot-timer',10*60*1000); focusFirstOTP('forgot-otp-container');
+  }
+
+  async function handleResetPassword() {
+    const newpw=document.getElementById('forgot-newpw').value;
+    const confirmpw=document.getElementById('forgot-confirmpw').value;
+    ['newpw','confirmpw'].forEach(f=>{ document.getElementById('err-'+f).classList.remove('show'); document.getElementById('forgot-'+f).classList.remove('error'); });
+    hideEl('forgot-reset-error');
+    let valid=true;
+    if (!newpw||newpw.length<6) { document.getElementById('forgot-newpw').classList.add('error'); document.getElementById('err-newpw').textContent='Au moins 6 caractères.'; document.getElementById('err-newpw').classList.add('show'); valid=false; }
+    if (!confirmpw) { document.getElementById('forgot-confirmpw').classList.add('error'); document.getElementById('err-confirmpw').textContent='Confirme ton mot de passe.'; document.getElementById('err-confirmpw').classList.add('show'); valid=false; }
+    else if (newpw!==confirmpw) { document.getElementById('forgot-confirmpw').classList.add('error'); document.getElementById('err-confirmpw').textContent='Les mots de passe ne correspondent pas.'; document.getElementById('err-confirmpw').classList.add('show'); valid=false; }
+    if (!valid) return;
+    if (!pendingReset) { showError('forgot-reset-error','Session expirée. Recommence.'); return; }
+    const btn=document.querySelector('#forgot-reset-card .btn-primary');
+    setButtonLoading(btn,true);
+    const {error}=await db.from('users').update({password:newpw}).eq('id',pendingReset.userId);
+    setButtonLoading(btn,false);
+    if (error) { showError('forgot-reset-error','Erreur Supabase : '+error.message); return; }
+    const {data:u}=await db.from('users').select('username').eq('id',pendingReset.userId).single();
+    pendingReset=null;
+    showError('forgot-reset-success','✓ Mot de passe modifié avec succès !');
+    setTimeout(()=>{
+      showAllCards('login-card');
+      if(u) document.getElementById('login-identifier').value=u.username;
+      hideEl('login-error'); showError('login-success','✓ Mot de passe mis à jour ! Tu peux maintenant te connecter.');
+    },1800);
+  }
+
+  // ─── LOGIN ────────────────────────────────────────────
+  async function handleLogin() {
+    const identifier=document.getElementById('login-identifier').value.trim();
+    const password=document.getElementById('login-password').value;
+    hideEl('login-error'); hideEl('login-success');
+    if (!identifier||!password) { showError('login-error','Remplis tous les champs.'); return; }
+    const btn=document.querySelector('#login-card .btn-primary');
+    setButtonLoading(btn,true);
+    let {data:user}=await db.from('users').select('*').eq('username_lower',identifier.toLowerCase()).maybeSingle();
+    if (!user) { const {data:byEmail}=await db.from('users').select('*').eq('email_lower',identifier.toLowerCase()).maybeSingle(); user=byEmail; }
+    setButtonLoading(btn,false);
+    if (!user||user.password!==password) {
+      showError('login-error','Identifiants incorrects. Vérifie ton email/pseudo et mot de passe.');
+      document.getElementById('login-password').classList.add('error');
+      setTimeout(()=>document.getElementById('login-password').classList.remove('error'),1500); return;
+    }
+    setCurrentUser(user); loadApp(user);
+  }
+
+  // ─── LOAD APP ─────────────────────────────────────────
+  function loadApp(user) {
+    document.getElementById('app-display-name').textContent=user.displayname;
+    document.getElementById('app-username').textContent='@'+user.username;
+    document.getElementById('app-avatar').childNodes[0].textContent=user.displayname.charAt(0).toUpperCase();
+    document.getElementById('logout-name').textContent=user.displayname;
+    document.getElementById('auth-overlay').style.animation='fadeOut 0.35s ease forwards';
+    setTimeout(()=>{ document.getElementById('auth-overlay').style.display='none'; document.getElementById('app').classList.add('visible'); },320);
+  }
+
+  // ─── LOGOUT ───────────────────────────────────────────
+  function handleLogout() {
+    sessionStorage.removeItem('nexus_current');
+    closeModal('logout-modal');
+    document.getElementById('app').classList.remove('visible');
+    document.getElementById('auth-overlay').style.display='flex';
+    document.getElementById('auth-overlay').style.animation='fadeIn 0.35s ease';
+    showAllCards('login-card');
+    document.getElementById('login-identifier').value='';
+    document.getElementById('login-password').value='';
+    hideEl('login-error'); hideEl('login-success');
+  }
+
+  // ─── UI ───────────────────────────────────────────────
+  function switchTab(el) { document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); el.classList.add('active'); }
+  function setActiveServer(el) { document.querySelectorAll('.server-icon').forEach(s=>s.classList.remove('active')); el.classList.add('active'); }
+  function showModal(id) { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+  document.querySelectorAll('.modal').forEach(m=>{ m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('open'); }); });
+
+  document.getElementById('login-password').addEventListener('keydown',e=>{ if(e.key==='Enter') handleLogin(); });
+  document.getElementById('login-identifier').addEventListener('keydown',e=>{ if(e.key==='Enter') handleLogin(); });
+  document.getElementById('forgot-email-input').addEventListener('keydown',e=>{ if(e.key==='Enter') handleForgotSend(); });
+  document.getElementById('forgot-newpw').addEventListener('keydown',e=>{ if(e.key==='Enter') handleResetPassword(); });
+  document.getElementById('forgot-confirmpw').addEventListener('keydown',e=>{ if(e.key==='Enter') handleResetPassword(); });
+
+  initOTPInputs('verify-otp-container');
+  initOTPInputs('forgot-otp-container');
+
+  const existingUser=getCurrentUser();
+  if (existingUser) { document.getElementById('auth-overlay').style.display='none'; loadApp(existingUser); }
+
+  const _s=document.createElement('style');
+  _s.textContent='@keyframes fadeOut{from{opacity:1}to{opacity:0}}';
+  document.head.appendChild(_s);
+</script>
+</body>
+</html>
